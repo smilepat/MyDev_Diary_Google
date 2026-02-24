@@ -1,11 +1,16 @@
 
 import React, { useState } from 'react';
-import { Key, Loader2, CheckCircle, AlertCircle, Zap } from 'lucide-react';
-import { testGeminiConnection } from '../services/geminiService';
-import { testOpenAIConnection } from '../services/openaiService';
-import { testAnthropicConnection } from '../services/anthropicService';
+import { Key, Loader2, CheckCircle, AlertCircle, Zap, ChevronDown } from 'lucide-react';
+import { testGeminiConnection, GEMINI_MODELS } from '../services/geminiService';
+import { testOpenAIConnection, OPENAI_MODELS } from '../services/openaiService';
+import { testAnthropicConnection, ANTHROPIC_MODELS } from '../services/anthropicService';
 
 type Provider = 'gemini' | 'openai' | 'anthropic';
+
+interface ModelOption {
+  id: string;
+  name: string;
+}
 
 interface ProviderConfig {
   name: string;
@@ -16,6 +21,7 @@ interface ProviderConfig {
   iconBg: string;
   buttonColor: string;
   buttonHover: string;
+  models: ModelOption[];
 }
 
 const PROVIDERS: Record<Provider, ProviderConfig> = {
@@ -28,6 +34,7 @@ const PROVIDERS: Record<Provider, ProviderConfig> = {
     iconBg: 'bg-blue-100',
     buttonColor: 'bg-blue-600',
     buttonHover: 'hover:bg-blue-700',
+    models: GEMINI_MODELS,
   },
   openai: {
     name: 'OpenAI',
@@ -38,6 +45,7 @@ const PROVIDERS: Record<Provider, ProviderConfig> = {
     iconBg: 'bg-emerald-100',
     buttonColor: 'bg-emerald-600',
     buttonHover: 'hover:bg-emerald-700',
+    models: OPENAI_MODELS,
   },
   anthropic: {
     name: 'Anthropic',
@@ -48,11 +56,17 @@ const PROVIDERS: Record<Provider, ProviderConfig> = {
     iconBg: 'bg-orange-100',
     buttonColor: 'bg-orange-600',
     buttonHover: 'hover:bg-orange-700',
+    models: ANTHROPIC_MODELS,
   },
 };
 
 export default function ApiKeyTestSection() {
   const [keys, setKeys] = useState<Record<Provider, string>>({ gemini: '', openai: '', anthropic: '' });
+  const [selectedModels, setSelectedModels] = useState<Record<Provider, string>>({
+    gemini: GEMINI_MODELS[0].id,
+    openai: OPENAI_MODELS[0].id,
+    anthropic: ANTHROPIC_MODELS[0].id,
+  });
   const [loading, setLoading] = useState<Record<Provider, boolean>>({ gemini: false, openai: false, anthropic: false });
   const [results, setResults] = useState<Record<Provider, { success: boolean; message: string; latency?: number } | null>>({
     gemini: null, openai: null, anthropic: null,
@@ -60,6 +74,7 @@ export default function ApiKeyTestSection() {
 
   const handleTest = async (provider: Provider) => {
     const key = keys[provider];
+    const model = selectedModels[provider];
     if (!key) return;
 
     setLoading(prev => ({ ...prev, [provider]: true }));
@@ -68,11 +83,11 @@ export default function ApiKeyTestSection() {
     try {
       let res;
       if (provider === 'gemini') {
-        res = await testGeminiConnection(key);
+        res = await testGeminiConnection(key, model);
       } else if (provider === 'openai') {
-        res = await testOpenAIConnection(key);
+        res = await testOpenAIConnection(key, model);
       } else {
-        res = await testAnthropicConnection(key);
+        res = await testAnthropicConnection(key, model);
       }
       setResults(prev => ({ ...prev, [provider]: res }));
     } catch (e: any) {
@@ -117,6 +132,22 @@ export default function ApiKeyTestSection() {
                   value={keys[provider]}
                   onChange={(e) => setKeys(prev => ({ ...prev, [provider]: e.target.value }))}
                 />
+              </div>
+
+              {/* Model Selector */}
+              <div className="relative mb-3">
+                <select
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all appearance-none cursor-pointer"
+                  value={selectedModels[provider]}
+                  onChange={(e) => setSelectedModels(prev => ({ ...prev, [provider]: e.target.value }))}
+                >
+                  {cfg.models.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
 
               {/* Test Button */}
