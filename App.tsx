@@ -137,12 +137,18 @@ const App: React.FC = () => {
     setIsSyncing(true);
     const cloudData = await fetchFromSheets(syncConfig.sheetUrl);
     if (cloudData) {
-      setLinks(cloudData.links);
+      // Firebase에 링크 저장
+      for (const link of cloudData.links) {
+        await fsAddLink(link);
+      }
+      // Firebase에 카테고리 저장
       if (cloudData.categories && cloudData.categories.length > 0) {
-        setCategories(cloudData.categories);
+        for (const cat of cloudData.categories) {
+          await fsAddCategory(cat);
+        }
       }
       setSyncStatus('synced');
-      alert('Data restored successfully from Cloud!');
+      alert(`Data restored successfully! ${cloudData.links.length} links imported.`);
     } else {
       alert('Failed to fetch data from Sheets. Check your URL.');
     }
