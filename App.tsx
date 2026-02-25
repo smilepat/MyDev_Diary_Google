@@ -120,10 +120,28 @@ const App: React.FC = () => {
     setIsSyncing(false);
   }, [syncConfig.sheetUrl, categories]);
 
-  // Auto-sync to Google Sheets when data changes
+  // Auto-sync to Google Sheets when data changes (with data protection)
   useEffect(() => {
     if (!syncConfig.sheetUrl || !syncConfig.isAutoSync || !isFirestoreReady) return;
-    if (links.length === 0 && categories.length === 0) return;
+
+    // 데이터 보호: 최소 카테고리 수 확인 (기본 카테고리 6개 이상)
+    const MIN_CATEGORIES = 5;
+    if (categories.length < MIN_CATEGORIES) {
+      console.log(`[Auto-sync] Skipped: categories (${categories.length}) below minimum (${MIN_CATEGORIES})`);
+      return;
+    }
+
+    // 마지막으로 알려진 링크 수 저장 및 급격한 감소 방지
+    const lastKnownLinks = parseInt(localStorage.getItem('devhub-last-links-count') || '0', 10);
+    if (links.length === 0 && lastKnownLinks > 5) {
+      console.log(`[Auto-sync] Skipped: links dropped from ${lastKnownLinks} to 0`);
+      return;
+    }
+
+    // 현재 링크 수 저장
+    if (links.length > 0) {
+      localStorage.setItem('devhub-last-links-count', String(links.length));
+    }
 
     const timeoutId = setTimeout(() => {
       handleSync(links, categories);
