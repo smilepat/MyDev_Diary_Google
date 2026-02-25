@@ -105,18 +105,6 @@ const App: React.FC = () => {
     localStorage.setItem('devhub-sync', JSON.stringify(syncConfig));
   }, [syncConfig]);
 
-  // Auto-sync to Google Sheets when data changes
-  useEffect(() => {
-    if (!syncConfig.sheetUrl || !syncConfig.isAutoSync || !isFirestoreReady) return;
-    if (links.length === 0 && categories.length === 0) return;
-
-    const timeoutId = setTimeout(() => {
-      handleSync(links, categories);
-    }, 2000); // 2초 디바운스로 너무 잦은 동기화 방지
-
-    return () => clearTimeout(timeoutId);
-  }, [links, categories, syncConfig.sheetUrl, syncConfig.isAutoSync, isFirestoreReady, handleSync]);
-
   // Sync effect (Google Sheets - optional)
   const handleSync = useCallback(async (dataToSync: LinkItem[], catsToSync?: Category[]) => {
     if (!syncConfig.sheetUrl) return;
@@ -131,6 +119,18 @@ const App: React.FC = () => {
     }
     setIsSyncing(false);
   }, [syncConfig.sheetUrl, categories]);
+
+  // Auto-sync to Google Sheets when data changes
+  useEffect(() => {
+    if (!syncConfig.sheetUrl || !syncConfig.isAutoSync || !isFirestoreReady) return;
+    if (links.length === 0 && categories.length === 0) return;
+
+    const timeoutId = setTimeout(() => {
+      handleSync(links, categories);
+    }, 2000); // 2초 디바운스로 너무 잦은 동기화 방지
+
+    return () => clearTimeout(timeoutId);
+  }, [links, categories, syncConfig.sheetUrl, syncConfig.isAutoSync, isFirestoreReady, handleSync]);
 
   const handleRestore = async () => {
     if (!syncConfig.sheetUrl) return;
