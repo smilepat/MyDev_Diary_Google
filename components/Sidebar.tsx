@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Plus, Settings, ChevronRight, ExternalLink } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, Settings, ChevronRight, ExternalLink, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Category } from '../types';
 import { getCategoryIcon, QUICK_ACCESS_GROUPS } from '../constants';
 import { formatUrl } from '../utils/url';
@@ -10,40 +10,153 @@ interface SidebarProps {
   selectedCategoryId: string;
   onSelectCategory: (id: string) => void;
   onAddCategory: () => void;
+  onEditCategory?: (id: string, newName: string) => void;
+  onDeleteCategory?: (id: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
-  categories, 
-  selectedCategoryId, 
-  onSelectCategory, 
-  onAddCategory 
+const Sidebar: React.FC<SidebarProps> = ({
+  categories,
+  selectedCategoryId,
+  onSelectCategory,
+  onAddCategory,
+  onEditCategory,
+  onDeleteCategory
 }) => {
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const menuRef = useRef<HTMLDivElement>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpenId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Auto-focus edit input
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingId]);
+
+  const handleStartEdit = (cat: Category) => {
+    setEditingId(cat.id);
+    setEditName(cat.name);
+    setMenuOpenId(null);
+  };
+
+  const handleFinishEdit = () => {
+    if (editingId && editName.trim() && onEditCategory) {
+      onEditCategory(editingId, editName.trim());
+    }
+    setEditingId(null);
+    setEditName('');
+  };
+
+  const handleDelete = (id: string) => {
+    setMenuOpenId(null);
+    if (onDeleteCategory) {
+      onDeleteCategory(id);
+    }
+  };
+
   return (
     <div className="w-64 flex flex-col border-r border-gray-200 bg-white h-full fixed left-0 top-0 pt-20 pb-6">
       <div className="px-6 mb-6 overflow-y-auto flex-1 custom-scrollbar">
         {/* Themes Section */}
         <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Themes</h2>
         <div className="space-y-1 mb-8">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => onSelectCategory(cat.id)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                selectedCategoryId === cat.id 
-                  ? 'bg-indigo-50 text-indigo-700 shadow-sm' 
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              <div className="flex items-center">
-                <span className={`mr-3 ${selectedCategoryId === cat.id ? 'text-indigo-600' : 'text-gray-400'}`}>
-                  {getCategoryIcon(cat.icon, "w-4 h-4")}
-                </span>
-                {cat.name}
+          {categories.map((cat) => {
+            const isEditing = editingId === cat.id;
+            const isDefault = cat.id === 'all';
+
+            return (
+              <div key={cat.id} className="relative group">
+                {isEditing ? (
+                  <div className="flex items-center px-3 py-2">
+                    <span className="mr-3 text-indigo-600">
+                      {getCategoryIcon(cat.icon, "w-4 h-4")}
+                    </span>
+                    <input
+                      ref={editInputRef}
+                      type="text"
+                      placeholder="Theme name"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onBlur={handleFinishEdit}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleFinishEdit();
+                        if (e.key === 'Escape') { setEditingId(null); setEditName(''); }
+                      }}
+                      className="flex-1 text-sm font-medium bg-white border border-indigo-300 rounded px-2 py-0.5 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => onSelectCategory(cat.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      selectedCategoryId === cat.id
+                        ? 'bg-indigo-50 text-indigo-700 shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <div className="flex items-center min-w-0">
+                      <span className={`mr-3 flex-shrink-0 ${selectedCategoryId === cat.id ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        {getCategoryIcon(cat.icon, "w-4 h-4")}
+                      </span>
+                      <span className="truncate">{cat.name}</span>
+                    </div>
+                    <div className="flex items-center flex-shrink-0">
+                      {!isDefault && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpenId(menuOpenId === cat.id ? null : cat.id);
+                          }}
+                          className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-all cursor-pointer"
+                        >
+                          <MoreHorizontal size={14} />
+                        </span>
+                      )}
+                      {selectedCategoryId === cat.id && !menuOpenId && <ChevronRight size={14} />}
+                    </div>
+                  </button>
+                )}
+
+                {/* Context Menu */}
+                {menuOpenId === cat.id && (
+                  <div
+                    ref={menuRef}
+                    className="absolute right-2 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-36 animate-in fade-in zoom-in-95 duration-100"
+                  >
+                    <button
+                      onClick={() => handleStartEdit(cat)}
+                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Pencil size={14} className="mr-2 text-gray-400" />
+                      Rename
+                    </button>
+                    <button
+                      onClick={() => handleDelete(cat.id)}
+                      className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 size={14} className="mr-2" />
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
-              {selectedCategoryId === cat.id && <ChevronRight size={14} />}
-            </button>
-          ))}
-          <button 
+            );
+          })}
+          <button
             onClick={onAddCategory}
             className="flex items-center w-full px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all text-xs font-semibold mt-2"
           >

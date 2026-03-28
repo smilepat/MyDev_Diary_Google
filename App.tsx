@@ -33,6 +33,7 @@ import {
   deleteLink as fsDeleteLink,
   subscribeLinks,
   saveCategory as fsAddCategory,
+  deleteCategory as fsDeleteCategory,
   subscribeCategories,
   saveTodo as fsAddTodo,
   deleteTodo as fsDeleteTodo,
@@ -230,6 +231,33 @@ const App: React.FC = () => {
     fsAddCategory(newCat);
   };
 
+  const handleEditCategory = (id: string, newName: string) => {
+    const cat = categories.find(c => c.id === id);
+    if (!cat || id === 'all') return;
+    fsAddCategory({ ...cat, name: newName });
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    if (id === 'all') return;
+    const cat = categories.find(c => c.id === id);
+    const linkedCount = links.filter(l => l.categoryId === id).length;
+    const msg = linkedCount > 0
+      ? `"${cat?.name}" 테마에 ${linkedCount}개의 링크가 있습니다. 링크는 "All Links"로 이동됩니다. 삭제하시겠습니까?`
+      : `"${cat?.name}" 테마를 삭제하시겠습니까?`;
+    if (!confirm(msg)) return;
+
+    // Move linked items to 'all'
+    links.filter(l => l.categoryId === id).forEach(link => {
+      fsAddLink({ ...link, categoryId: 'all' });
+    });
+
+    fsDeleteCategory(id);
+
+    if (selectedCategoryId === id) {
+      setSelectedCategoryId('all');
+    }
+  };
+
   // Todo Handlers
   const handleAddTodo = (text: string) => {
     const todo: TodoItem = {
@@ -331,6 +359,8 @@ const App: React.FC = () => {
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
           onAddCategory={handleAddCategory}
+          onEditCategory={handleEditCategory}
+          onDeleteCategory={handleDeleteCategory}
         />
 
         {/* Content Area */}
