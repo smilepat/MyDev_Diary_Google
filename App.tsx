@@ -33,6 +33,7 @@ import {
   deleteLink as fsDeleteLink,
   subscribeLinks,
   saveCategory as fsAddCategory,
+  deleteCategory as fsDeleteCategory,
   subscribeCategories,
   saveTodo as fsAddTodo,
   deleteTodo as fsDeleteTodo,
@@ -230,6 +231,18 @@ const App: React.FC = () => {
     fsAddCategory(newCat);
   };
 
+  const handleEditCategory = (id: string, newName: string) => {
+    const cat = categories.find(c => c.id === id);
+    if (!cat || id === 'all') return;
+    fsAddCategory({ ...cat, name: newName });
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    if (id === 'all') return;
+    fsDeleteCategory(id);
+    if (selectedCategoryId === id) setSelectedCategoryId('all');
+  };
+
   // Todo Handlers
   const handleAddTodo = (text: string) => {
     const todo: TodoItem = {
@@ -281,16 +294,18 @@ const App: React.FC = () => {
             {isFirestoreReady ? 'FIREBASE SYNCED' : 'CONNECTING...'}
           </button>
 
-          <div className="relative group hidden md:block text-slate-800">
+          <form className="relative group hidden md:block text-slate-800" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
             <input
-              type="text"
+              type="search"
+              name={"q_" + Date.now()}
+              autoComplete="new-password"
               placeholder="Search apps, urls, or data..."
               className="pl-10 pr-4 py-2 bg-gray-100 border-none rounded-full text-sm w-64 focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-          </div>
+          </form>
 
           <button
             onClick={() => setIsTodoOpen(true)}
@@ -331,6 +346,8 @@ const App: React.FC = () => {
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
           onAddCategory={handleAddCategory}
+          onEditCategory={handleEditCategory}
+          onDeleteCategory={handleDeleteCategory}
         />
 
         {/* Content Area */}
